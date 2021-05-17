@@ -1,6 +1,7 @@
 package com.github.antonnaumov.oauth2.clientcredentials;
 
 import com.github.antonnaumov.oauth2.AuthStyle;
+import com.github.antonnaumov.oauth2.Decoder;
 import com.github.antonnaumov.oauth2.Transport;
 
 import java.util.HashMap;
@@ -9,15 +10,18 @@ import java.util.Map;
 import java.util.Set;
 
 final class ConfigBuilderImpl implements Config.Builder {
-    private String clientID = "";
-    private String clientSecret = "";
-    private String tokenURL = "";
+    private String clientID;
+    private String clientSecret;
+    private String tokenURL;
     private Transport transport;
+    private Decoder decoder;
     private final Set<String> scopes = new HashSet<>();
     private final Map<String, Object> params = new HashMap<>();
-    private AuthStyle authStyle = AuthStyle.AUTO;
+    private AuthStyle authStyle;
 
-    ConfigBuilderImpl() {}
+    ConfigBuilderImpl() {
+        reset();
+    }
 
     @Override
     public Config.Builder withClientCredentials(final String clientID, final String clientSecret) {
@@ -39,6 +43,12 @@ final class ConfigBuilderImpl implements Config.Builder {
     }
 
     @Override
+    public Config.Builder withDecoder(final Decoder decoder) {
+        this.decoder = decoder;
+        return this;
+    }
+
+    @Override
     public Config.Builder withAuthStyle(final AuthStyle authStyle) {
         this.authStyle = authStyle;
         return this;
@@ -56,18 +66,23 @@ final class ConfigBuilderImpl implements Config.Builder {
         return this;
     }
 
-    @Override
-    public Config build() {
-        final var cfg = new Config(clientID, clientSecret, tokenURL, authStyle, transport, scopes, params);
-
+    private void reset() {
         clientID = "";
         clientSecret = "";
         tokenURL = "";
         transport = null;
+        decoder = null;
         authStyle = AuthStyle.AUTO;
         scopes.clear();
         params.clear();
+    }
 
-        return cfg;
+    @Override
+    public Config build() {
+        try {
+            return new Config(clientID, clientSecret, tokenURL, authStyle, scopes, params, transport, decoder);
+        } finally {
+            reset();
+        }
     }
 }

@@ -1,8 +1,10 @@
 package com.github.antonnaumov.oauth2.clientcredentials;
 
 import com.github.antonnaumov.oauth2.AuthStyle;
+import com.github.antonnaumov.oauth2.Decoder;
 import com.github.antonnaumov.oauth2.ReuseTokenSource;
 import com.github.antonnaumov.oauth2.Token;
+import com.github.antonnaumov.oauth2.TokenProducer;
 import com.github.antonnaumov.oauth2.TokenSource;
 import com.github.antonnaumov.oauth2.Transport;
 
@@ -18,6 +20,8 @@ public final class Config {
 
         Builder withTransport(Transport transport);
 
+        Builder withDecoder(Decoder decoder);
+
         Builder withAuthStyle(AuthStyle authStyle);
 
         Builder withScope(String scope);
@@ -31,7 +35,7 @@ public final class Config {
     public final String clientSecret;
     public final String tokenURL;
     public final AuthStyle authStyle;
-    public final Transport transport;
+    public final TokenProducer producer;
     public final Set<String> scopes;
     public final Map<String, Object> endpointParams;
 
@@ -43,13 +47,14 @@ public final class Config {
            final String clientSecret,
            final String tokenURL,
            final AuthStyle authStyle,
-           final Transport transport,
            final Set<String> scopes,
-           final Map<String, Object> endpointParams) {
+           final Map<String, Object> endpointParams,
+           final Transport transport,
+           final Decoder decoder) {
         this.clientID = clientID;
         this.clientSecret = clientSecret;
         this.tokenURL = tokenURL;
-        this.transport = transport;
+        this.producer = new TokenProducer(transport, decoder);
         this.scopes = Set.copyOf(scopes);
         this.endpointParams = Map.copyOf(endpointParams);
         this.authStyle = authStyle;
@@ -59,7 +64,7 @@ public final class Config {
         return tokenSource().token();
     }
 
-    public TokenSource tokenSource() throws Exception {
+    public TokenSource tokenSource() {
         return new ReuseTokenSource(() -> {
             final var params = new HashMap<String, Object>();
             params.put("grant_type", "client_credentials");
@@ -72,7 +77,7 @@ public final class Config {
                 }
                 params.put(entry.getKey(), entry.getValue());
             }
-            return transport.token(tokenURL, clientID, clientSecret, authStyle, params);
+            return producer.produce(tokenURL, clientID, clientSecret, authStyle, params);
         }, null);
     }
 }

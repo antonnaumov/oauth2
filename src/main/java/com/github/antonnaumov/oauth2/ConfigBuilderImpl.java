@@ -4,10 +4,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 final class ConfigBuilderImpl implements Config.Builder {
-    private String clientID = "";
-    private String clientSecret = "";
-    private String redirectURL = "";
+    private String clientID;
+    private String clientSecret;
+    private String redirectURL;
     private Transport transport;
+    private Decoder decoder;
     private final Set<String> scopes = new HashSet<>();
     private Endpoint endpoint;
 
@@ -39,6 +40,12 @@ final class ConfigBuilderImpl implements Config.Builder {
     }
 
     @Override
+    public Config.Builder withDecoder(final Decoder decoder) {
+        this.decoder = decoder;
+        return this;
+    }
+
+    @Override
     public Config.Builder withScope(final String scope) {
         this.scopes.add(scope);
         return this;
@@ -46,15 +53,6 @@ final class ConfigBuilderImpl implements Config.Builder {
 
     @Override
     public Config build() {
-        final var cfg = new Config(clientID, clientSecret, endpoint, transport, redirectURL, scopes);
-
-        clientID = "";
-        clientSecret = "";
-        endpoint = null;
-        transport = null;
-        redirectURL = "";
-        scopes.clear();
-
-        return cfg;
+        return new Config(clientID, clientSecret, endpoint, redirectURL, scopes, transport, decoder);
     }
 }

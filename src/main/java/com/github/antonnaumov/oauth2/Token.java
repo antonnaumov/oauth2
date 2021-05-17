@@ -1,7 +1,6 @@
 package com.github.antonnaumov.oauth2;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public final class Token {
@@ -22,22 +21,18 @@ public final class Token {
         this.tokenType = tokenType;
         this.refreshToken = refreshToken;
         this.expire = expire;
-        this.extra = extra;
+        this.extra = Map.copyOf(extra);
     }
 
     public String authHeader() {
         return tokenType.asString() + " " + accessToken;
     }
 
-    public Optional<Object> extra(final String key) {
-        return Optional.ofNullable(extra.get(key));
-    }
-
     public boolean valid() {
-        return !accessToken.equals("") && !expired();
+        return !"".equals(accessToken) && !expired();
     }
 
-    private boolean expired() {
+    boolean expired() {
         if (expire == 0) {
             return false;
         }

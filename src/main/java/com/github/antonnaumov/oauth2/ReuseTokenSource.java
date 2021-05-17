@@ -17,7 +17,7 @@ public final class ReuseTokenSource implements TokenSource {
     public Token token() throws Exception {
         lock.lock();
         try {
-            if (!token.valid()) {
+            if (token == null || !token.valid()) {
                 token = next.token();
             }
 

@@ -12,4 +12,17 @@ public enum TokenType {
     public String asString() {
         return type;
     }
+
+    public static TokenType fromString(final String type) {
+        switch (type.toLowerCase()) {
+            case "bearer":
+                return BEARER;
+            case "mac":
+                return MAC;
+            case "basic":
+                return BASIC;
+            default:
+                throw new IllegalArgumentException("Unsupported token type: " + type);
+        }
+    }
 }

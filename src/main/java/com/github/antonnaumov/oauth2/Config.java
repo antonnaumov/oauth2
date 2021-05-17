@@ -15,6 +15,8 @@ public final class Config {
 
         Builder withTransport(Transport transport);
 
+        Builder withDecoder(Decoder encoder);
+
         Builder withScope(String scope);
 
         Config build();
@@ -23,7 +25,7 @@ public final class Config {
     public final String clientID;
     public final String clientSecret;
     public final Endpoint endpoint;
-    public final Transport transport;
+    public final TokenProducer producer;
     public final String redirectURL;
     public final Set<String> scopes;
 
@@ -34,18 +36,19 @@ public final class Config {
     Config(final String clientID,
            final String clientSecret,
            final Endpoint endpoint,
-           final Transport transport,
            final String redirectURL,
-           final Set<String> scopes) {
+           final Set<String> scopes,
+           final Transport transport,
+           final Decoder decoder) {
         this.clientID = clientID;
         this.clientSecret = clientSecret;
         this.endpoint = endpoint;
-        this.transport = transport;
+        this.producer = new TokenProducer(transport, decoder);
         this.redirectURL = redirectURL;
-        this.scopes = scopes;
+        this.scopes = Set.copyOf(scopes);
     }
 
-    public String authCodeURL(final String state, final Map<String, Object> extras) throws MalformedURLException {
+    public String authCodeURL(final String state, final Map<String, Object> extras) {
         final var builder = new StringBuilder().append(endpoint.authURL());
         if (endpoint.authURL().endsWith("?")) {
             builder.append("&");
@@ -79,7 +82,7 @@ public final class Config {
         if (scopes.size() > 0) {
             formData.put("scope", String.join(" ", scopes));
         }
-        return transport.token(endpoint.tokenURL(), clientID, clientSecret, endpoint.authStyle(), formData);
+        return producer.produce(endpoint.tokenURL(), clientID, clientSecret, endpoint.authStyle(), formData);
     }
 
     public Token exchange(final String code, final Map<String, Object> extras) throws Exception {
@@ -92,16 +95,16 @@ public final class Config {
         if (null != extras) {
             formData.putAll(extras);
         }
-        return transport.token(endpoint.tokenURL(), clientID, clientSecret, endpoint.authStyle(), formData);
+        return producer.produce(endpoint.tokenURL(), clientID, clientSecret, endpoint.authStyle(), formData);
     }
 
     public TokenSource tokenSource(final Token token) {
         return new ReuseTokenSource(() -> {
             if (token == null || "".equals(token.refreshToken)) {
-                throw new Exception("OAuth2: token expired and refresh token is not set");
+                throw new Exception("OAuth2: both access token and refresh token are missing");
             }
 
-            return transport.token(
+            return producer.produce(
                     endpoint.tokenURL(),
                     clientID,
                     clientSecret,
