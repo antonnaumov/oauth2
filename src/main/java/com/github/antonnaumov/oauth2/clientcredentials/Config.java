@@ -1,6 +1,7 @@
 package com.github.antonnaumov.oauth2.clientcredentials;
 
 import com.github.antonnaumov.oauth2.AuthStyle;
+import com.github.antonnaumov.oauth2.ConfigurationParameterMissingException;
 import com.github.antonnaumov.oauth2.Decoder;
 import com.github.antonnaumov.oauth2.ReuseTokenSource;
 import com.github.antonnaumov.oauth2.Token;
@@ -12,23 +13,70 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * OAuth2 configuration for the provider client credentials.
+ *
+ * The configuration defines the strategy to obtain all possible OAuth2 tokens kind with the provider client credentials.
+ */
 public final class Config {
+    /**
+     * OAuth2 configuration for the provider client credentials builder.
+     *
+     * The builder provides the most comfortable and straight way to setup all configuration parameters.
+     */
     public interface Builder {
+        /**
+         * Specify OAuth2 clientID and clientSecret authentication secrets.
+         *
+         * The secrets are core part of the OAuth2 authentication.
+         *
+         * @param clientID client unique identifier.
+         * @param clientSecret client password.
+         * @return the builder instance with clientID and clientSecret setup.
+         */
         Builder withClientCredentials(String clientID, String clientSecret);
 
+        /**
+         * Specify OAuth2 provider token URL.
+         * @param tokenURL OAuth2 provider token URL.
+         * @return the builder instance with clientID and clientSecret setup.
+         */
         Builder withTokenURL(String tokenURL);
-
-        Builder withTransport(Transport transport);
-
-        Builder withDecoder(Decoder decoder);
-
-        Builder withAuthStyle(AuthStyle authStyle);
-
-        Builder withScope(String scope);
 
         Builder withEndpointParam(String name, Object value);
 
-        Config build();
+        Builder withAuthStyle(AuthStyle authStyle);
+
+        /**
+         * Specify OAuth2 transport.
+         *
+         * @param transport the {@link Transport} interface implementation using to interact with OAuth2 provider.
+         * @return the builder instance with redirect URI setup.
+         */
+        Builder withTransport(Transport transport);
+
+        /**
+         * Specify OAuth2 response decoder.
+         *
+         * @param decoder the {@link Decoder} interface implementation using to decode OAuth2 provider response.
+         * @return the builder instance with decoder setup.
+         */
+        Builder withDecoder(Decoder decoder);
+
+        /**
+         * Specify OAuth2 request scope.
+         *
+         * @param scope the OAuth2 provider scope.
+         * @return the builder instance with new scope.
+         */
+        Builder withScope(String scope);
+
+        /**
+         * Build OAuth2 configuration instance.
+         *
+         * @return the Config instance.
+         */
+        Config build() throws ConfigurationParameterMissingException;
     }
 
     public final String clientID;

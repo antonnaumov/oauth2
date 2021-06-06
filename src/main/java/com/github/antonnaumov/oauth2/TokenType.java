@@ -1,5 +1,9 @@
 package com.github.antonnaumov.oauth2;
 
+/**
+ * OAuth2 token usage type.
+ * <p>The OAuth2 token is possible to use as Bearer, MAC or Basic Auth header.</p>
+ */
 public enum TokenType {
     BEARER("Bearer"), MAC("MAC"), BASIC("Basic");
 

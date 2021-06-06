@@ -12,8 +12,11 @@ import java.util.Map;
 import java.util.Optional;
 
 public class TestConfig {
+    private static final Transport noopTransport = (url, req) -> new StringReader("");
+    private static final Decoder noopDecoder = (reader) -> new Token("", TokenType.BEARER, "", -1);
+
     @Test
-    public void authCodeURL() {
+    public void authCodeURL() throws Exception {
         final var cfg = Config.newBuilder()
                 .withClientCredentials("CLIENT_ID", "CLIENT_SECRET")
                 .withRedirectURL("REDIRECT_URL")
@@ -30,6 +33,8 @@ public class TestConfig {
                         return "server/token";
                     }
                 })
+                .withTransport(noopTransport)
+                .withDecoder(noopDecoder)
                 .build();
         final var url = cfg.authCodeURL("foo", Map.of("access_type", "offline", "prompt", "consent"));
         Assertions.assertTrue(url.startsWith("server/auth?access_type=offline"));
@@ -42,7 +47,7 @@ public class TestConfig {
     }
 
     @Test
-    public void authCodeURLCustomParam() {
+    public void authCodeURLCustomParam() throws Exception {
         final var cfg = Config.newBuilder()
                 .withClientCredentials("CLIENT_ID", "CLIENT_SECRET")
                 .withRedirectURL("REDIRECT_URL")
@@ -59,6 +64,8 @@ public class TestConfig {
                         return "server/token";
                     }
                 })
+                .withTransport(noopTransport)
+                .withDecoder(noopDecoder)
                 .build();
         final var url = cfg.authCodeURL("bazz", Map.of("foo", "bar"));
         Assertions.assertTrue(url.startsWith("server/auth"));
@@ -71,7 +78,7 @@ public class TestConfig {
     }
 
     @Test
-    public void authCodeURLBlank() {
+    public void authCodeURLBlank() throws Exception {
         final var cfg = Config.newBuilder()
                 .withClientCredentials("CLIENT_ID", "CLIENT_SECRET")
                 .withEndpoint(new Endpoint() {
@@ -85,11 +92,13 @@ public class TestConfig {
                         return "/token-url";
                     }
                 })
+                .withTransport(noopTransport)
+                .withDecoder(noopDecoder)
                 .build();
         final var url = cfg.authCodeURL("", Map.of());
-        Assertions.assertTrue(url.startsWith("auth-url"));
-        Assertions.assertTrue(url.contains("&response_type=code"));
-        Assertions.assertTrue(url.contains("&client_id=CLIENT_ID"));
+        Assertions.assertTrue(url.startsWith("/auth-url"));
+        Assertions.assertTrue(url.contains("response_type=code"));
+        Assertions.assertTrue(url.contains("client_id=CLIENT_ID"));
     }
 
     @Test
@@ -112,7 +121,7 @@ public class TestConfig {
                     if (Optional.ofNullable(req.params.get("code")).filter(c -> c.equals("exchange-code")).isEmpty()) {
                         throw new IOException("Exchange code missing or incorrect");
                     }
-                    if (Optional.ofNullable(req.params.get("grant_type")).filter(c -> c.equals("authorization-code")).isEmpty()) {
+                    if (Optional.ofNullable(req.params.get("grant_type")).filter(c -> c.equals("authorisation_code")).isEmpty()) {
                         throw new IOException("Grant type missing or incorrect");
                     }
                     if (Optional.ofNullable(req.params.get("redirect_uri")).filter(c -> c.equals("REDIRECT_URL")).isEmpty()) {
@@ -136,7 +145,7 @@ public class TestConfig {
                 })
                 .build();
         final var token = cfg.exchange("exchange-code", Map.of());
-        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7", token.accessToken);
+        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7c", token.accessToken);
         Assertions.assertSame(TokenType.BEARER, token.tokenType);
         Assertions.assertEquals("user", Optional.ofNullable(token.extra.get("scope")).map(Object::toString).orElse(""));
     }
@@ -161,13 +170,20 @@ public class TestConfig {
                     if (Optional.ofNullable(req.params.get("code")).filter(c -> c.equals("exchange-code")).isEmpty()) {
                         throw new IOException("Exchange code missing or incorrect");
                     }
-                    if (Optional.ofNullable(req.params.get("grant_type")).filter(c -> c.equals("authorization-code")).isEmpty()) {
+                    if (Optional.ofNullable(req.params.get("grant_type")).filter(c -> c.equals("authorisation_code")).isEmpty()) {
                         throw new IOException("Grant type missing or incorrect");
                     }
                     if (Optional.ofNullable(req.params.get("redirect_uri")).filter(c -> c.equals("REDIRECT_URL")).isEmpty()) {
                         throw new IOException("Redirect URL missing or incorrect");
                     }
-                    return new StringReader("access_token=90d64460d14870c08c81352a05dedd3465940a7c&scope=user&token_type=bearer");
+                    final var resp = new StringBuilder()
+                            .append("access_token=90d64460d14870c08c81352a05dedd3465940a7c&scope=user&token_type=bearer");
+                    req.params.forEach((k, v) -> {
+                        if (!List.of("access_token", "refresh_token", "token_type", "expire_in", "scope").contains(k)) {
+                            resp.append("&").append(k).append("=").append(v);
+                        }
+                    });
+                    return new StringReader(resp.toString());
                 })
                 .withDecoder(reader -> {
                     final var buf = new StringBuilder();
@@ -185,7 +201,7 @@ public class TestConfig {
                 })
                 .build();
         final var token = cfg.exchange("exchange-code", Map.of("foo", "bar"));
-        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7", token.accessToken);
+        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7c", token.accessToken);
         Assertions.assertSame(TokenType.BEARER, token.tokenType);
         Assertions.assertEquals("user", Optional.ofNullable(token.extra.get("scope")).map(Object::toString).orElse(""));
         Assertions.assertEquals("bar", Optional.ofNullable(token.extra.get("foo")).map(Object::toString).orElse(""));
@@ -217,13 +233,13 @@ public class TestConfig {
                         throw new IOException("Password missing or incorrect");
                     }
                     if (Optional.ofNullable(req.params.get("username")).filter(c -> c.equals("user1")).isEmpty()) {
-                        throw new IOException("Password missing or incorrect");
+                        throw new IOException("Username missing or incorrect");
                     }
                     if (Optional.ofNullable(req.params.get("redirect_uri")).filter(c -> c.equals("REDIRECT_URL")).isPresent()) {
                         throw new IOException("Redirect URL is not part of password credentials request");
                     }
-                    if (Optional.ofNullable(req.params.get("scope")).filter(c -> c.equals("scope1+scope2") || c.equals("scope2+scope1")).isEmpty()) {
-                        throw new IOException("Redirect URL is not part of password credentials request");
+                    if (Optional.ofNullable(req.params.get("scope")).filter(c -> c.equals("scope1 scope2") || c.equals("scope2 scope1")).isEmpty()) {
+                        throw new IOException("Scope is not part of password credentials request");
                     }
                     return new StringReader("access_token=90d64460d14870c08c81352a05dedd3465940a7c&scope=user&token_type=bearer");
                 })
@@ -243,7 +259,7 @@ public class TestConfig {
                 })
                 .build();
         final var token = cfg.passwordCredentialsToken("user1", "password");
-        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7", token.accessToken);
+        Assertions.assertEquals("90d64460d14870c08c81352a05dedd3465940a7c", token.accessToken);
         Assertions.assertSame(TokenType.BEARER, token.tokenType);
         Assertions.assertEquals("user", Optional.ofNullable(token.extra.get("scope")).map(Object::toString).orElse(""));
     }

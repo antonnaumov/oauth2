@@ -16,7 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 
+/**
+ * {@link Transport} implementation using {@code java.net.http.HttpClient} to communicate with the OAuth2 provider.
+ */
 public final class JdkHttpTransport implements Transport {
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Reader token(final String url, final Request request) throws Exception {
         final var client = java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();

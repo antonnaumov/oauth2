@@ -9,6 +9,9 @@ import com.google.gson.annotations.SerializedName;
 import java.io.Reader;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * A {@link Decoder} implementation using {@code com.google.gson.Gson} to parse the OAuth2 provider JSON response.
+ */
 public final class GsonDecoder implements Decoder {
     private static final class Response {
         @SerializedName("access_token")
@@ -21,6 +24,9 @@ public final class GsonDecoder implements Decoder {
         Response() {}
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Token decode(final Reader responseReader) {
         final var gson = new Gson();
